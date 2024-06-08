@@ -1,0 +1,70 @@
+#include "CytronMotorDriver.h"
+
+// Motor driver initialization
+CytronMD motorLeft(PWM_PWM, 11, 10); 
+CytronMD motorRight(PWM_PWM, 9, 3);
+
+// Pin definitions
+#define BUTTON 2
+#define IR_LEFT A0
+#define IR_RIGHT A1
+#define TRIGPIN 5
+#define ECHOPIN 4
+
+// Declare variables
+long duration;
+long distance;
+
+void robotStop() {
+    motorLeft.setSpeed(0);
+    motorRight.setSpeed(0);
+}
+
+void robotMove(int speedLeft, int speedRight) {
+    motorLeft.setSpeed(speedLeft);
+    motorRight.setSpeed(speedRight);
+}
+
+void setup() {
+    // Configure pin modes
+    pinMode(IR_LEFT, INPUT); 
+    pinMode(IR_RIGHT, INPUT); 
+    pinMode(BUTTON, INPUT_PULLUP);
+    pinMode(TRIGPIN, OUTPUT);
+    pinMode(ECHOPIN, INPUT);
+    
+    Serial.begin(9600);
+}
+
+void loop() {
+    if (digitalRead(BUTTON) == LOW) {
+        while (true) {
+            // Ultrasonic sensor reading
+            digitalWrite(TRIGPIN, LOW);
+            delayMicroseconds(2);
+            digitalWrite(TRIGPIN, HIGH);
+            delayMicroseconds(10);
+            digitalWrite(TRIGPIN, LOW);
+
+            duration = pulseIn(ECHOPIN, HIGH);
+            distance = duration * 0.017;
+
+            if (distance > 15) {
+                // IR sensors for line following on a black line
+                if (digitalRead(IR_LEFT) == LOW && digitalRead(IR_RIGHT) == LOW) {
+                    robotMove(200, 200);  // Move forward
+                } else if (digitalRead(IR_LEFT) == HIGH && digitalRead(IR_RIGHT) == HIGH) {
+                    robotStop();  // Stop at the cross junction
+                    Serial.println("Cross junction detected. Stopping.");
+                    break;  // Exit the loop
+                } else if (digitalRead(IR_LEFT) == HIGH) {
+                    robotMove(-200, 200); // Turn left
+                } else if (digitalRead(IR_RIGHT) == HIGH) {
+                    robotMove(200, -200); // Turn right
+                }
+            } else {
+                robotStop();  // Stop if an obstacle is too close
+            }
+        }
+    }
+}
